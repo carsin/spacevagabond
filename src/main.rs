@@ -1,3 +1,4 @@
+use std::time::{Duration, Instant};
 use winit::{
     event::{Event, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
@@ -11,9 +12,15 @@ fn main() {
     let window = WindowBuilder::new().build(&event_loop).unwrap();
 
     let mut game = game::Game::new();
+    let mut last_tick = Instant::now();
 
     event_loop.run(move |event, _, control_flow| {
         *control_flow = ControlFlow::Poll;
+
+        // calculate delta
+        let current_tick = Instant::now();
+        let delta_time = current_tick.duration_since(last_tick);
+        last_tick = current_tick;
 
         match event {
             Event::WindowEvent {
