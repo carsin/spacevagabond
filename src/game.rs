@@ -1,14 +1,12 @@
 use winit::window::Window;
 
 pub struct Game {
-    pub running: bool,
     frame_count: u32,
 }
 
 impl Game {
     pub fn new() -> Self {
         Self {
-            running: false,
             frame_count: 0,
         }
     }

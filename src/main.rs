@@ -11,10 +11,9 @@ fn main() {
     let window = WindowBuilder::new().build(&event_loop).unwrap();
 
     let mut game = game::Game::new();
-    game.running = true;
 
     event_loop.run(move |event, _, control_flow| {
-        *control_flow = ControlFlow::Wait;
+        *control_flow = ControlFlow::Poll;
 
         match event {
             Event::WindowEvent {
