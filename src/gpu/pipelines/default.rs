@@ -13,8 +13,6 @@ use crate::gpu::GpuInfo;
 
 #[derive(Debug)]
 pub enum Error {
-    NonexistentMeshId,
-    NonexistentInstanceId,
 }
 pub type Result<T> = std::result::Result<T, Error>;
 
@@ -58,9 +56,9 @@ pub struct Instance {
 unsafe impl Zeroable for Instance {}
 unsafe impl Pod for Instance {}
 impl Instance {
-    pub fn new(transform: na::Similarity2<f32>) -> Self {
+    pub fn new(transform: impl Into<mint::ColumnMatrix3<f32>>) -> Self {
         Self {
-            transform: transform.to_homogeneous().into(),
+            transform: transform.into(),
         }
     }
 }
@@ -73,12 +71,10 @@ pub struct MeshData<'a> {
 
 // A full gpu-uploaded mesh with instance information
 pub struct Mesh {
+    index_count: u32,
     vertex_buffer: wgpu::Buffer,
     index_buffer: wgpu::Buffer,
-    index_count: u32,
     instance_buffer: wgpu::Buffer,
-    instances: Vec<Instance>,
-    instance_ids: Vec<InstanceId>,
 }
 
 pub struct DefaultPipeline {
@@ -90,12 +86,7 @@ pub struct DefaultPipeline {
     pipeline: wgpu::RenderPipeline,
     view_buffer: wgpu::Buffer,
     view_bind_group: wgpu::BindGroup,
-    meshes: Vec<Mesh>,
-    mesh_ids: Vec<MeshId>,
 }
-
-pub type MeshId = usize;
-pub type InstanceId = usize;
 
 impl DefaultPipeline {
     pub fn new(gpu_info: Arc<Mutex<GpuInfo>>, view: View) -> Self {
@@ -208,91 +199,31 @@ impl DefaultPipeline {
             pipeline,
             view_buffer,
             view_bind_group,
-            meshes: Vec::new(),
-            mesh_ids: Vec::new(),
         }
     }
 
-    pub fn add_mesh(&mut self, data: &MeshData) -> Result<MeshId> {
+    pub fn create_mesh(&mut self, data: &MeshData) -> Result<Mesh> {
         let GpuInfo { device, .. } = &*self.gpu_info.lock().unwrap();
 
         let mesh = Mesh {
+            index_count: data.indices.len() as u32,
             vertex_buffer: create_vertex_buffer(device, data.vertices),
             index_buffer: create_index_buffer(device, data.indices),
-            index_count: data.indices.len() as u32,
             instance_buffer: create_instance_buffer(device, &[]),
-            instances: Vec::new(),
-            instance_ids: Vec::new(),
         };
 
-        let mesh_index = first_available_id_index(&self.mesh_ids);
-
-        self.meshes.insert(mesh_index, mesh);
-        self.mesh_ids.insert(mesh_index, mesh_index);
-
-        Ok(mesh_index)
+        Ok(mesh)
     }
 
-    pub fn remove_mesh(&mut self, mesh_id: MeshId) -> Result<()> {
-        let mesh_index = self
-            .mesh_ids
-            .binary_search(&mesh_id)
-            .or(Err(Error::NonexistentMeshId))?;
-
-        self.meshes.remove(mesh_index);
-        self.mesh_ids.remove(mesh_index);
-
-        Ok(())
-    }
-
-    pub fn add_mesh_instance(&mut self, mesh_id: MeshId, instance: Instance) -> Result<InstanceId> {
-        let GpuInfo { device, .. } = &*self.gpu_info.lock().unwrap();
-
-        let mesh_index = self
-            .mesh_ids
-            .binary_search(&mesh_id)
-            .or(Err(Error::NonexistentMeshId))?;
-        let mesh = &mut self.meshes[mesh_index];
-
-        let instance_index = first_available_id_index(&mesh.instance_ids);
-
-        mesh.instances.insert(instance_index, instance);
-        mesh.instance_ids.insert(instance_index, instance_index);
-
-        mesh.instance_buffer = create_instance_buffer(device, &mesh.instances);
-
-        Ok(instance_index)
-    }
-
-    pub fn remove_mesh_instance(&mut self, mesh_id: MeshId, instance_id: InstanceId) -> Result<()> {
-        let GpuInfo { device, .. } = &*self.gpu_info.lock().unwrap();
-
-        let mesh_index = self
-            .mesh_ids
-            .binary_search(&mesh_id)
-            .or(Err(Error::NonexistentMeshId))?;
-        let mesh = &mut self.meshes[mesh_index];
-
-        let instance_index = mesh
-            .instance_ids
-            .binary_search(&instance_id)
-            .or(Err(Error::NonexistentInstanceId))?;
-
-        mesh.instances.remove(instance_index);
-        mesh.instance_ids.remove(instance_index);
-
-        mesh.instance_buffer = create_instance_buffer(device, &mesh.instances);
-
-        Ok(())
-    }
-
-    pub fn render(&mut self, target: &wgpu::TextureView) {
+    pub fn render(&mut self, target: &wgpu::TextureView, mesh: &mut Mesh, instances: &[Instance]) {
         let GpuInfo {
             device,
             queue,
             swapchain,
             ..
         } = &*self.gpu_info.lock().unwrap();
+
+        mesh.instance_buffer = create_instance_buffer(device, instances);
 
         // Update uniform
         queue.write_buffer(&self.view_buffer, 0, self.view.as_std140().as_bytes());
@@ -306,7 +237,7 @@ impl DefaultPipeline {
                 color_attachments: &[wgpu::RenderPassColorAttachmentDescriptor {
                     attachment: target,
                     ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Load,
+                        load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
                         store: true,
                     },
                     resolve_target: None,
@@ -315,13 +246,10 @@ impl DefaultPipeline {
             });
             render_pass.set_pipeline(&self.pipeline);
             render_pass.set_bind_group(0, &self.view_bind_group, &[]);
-            for mesh in &self.meshes {
-                render_pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
-                render_pass.set_vertex_buffer(1, mesh.instance_buffer.slice(..));
-                render_pass
-                    .set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
-                render_pass.draw_indexed(0..mesh.index_count, 0, 0..mesh.instances.len() as u32);
-            }
+            render_pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
+            render_pass.set_vertex_buffer(1, mesh.instance_buffer.slice(..));
+            render_pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
+            render_pass.draw_indexed(0..mesh.index_count, 0, 0..instances.len() as u32);
         }
 
         // Submit
