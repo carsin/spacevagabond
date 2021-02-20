@@ -5,7 +5,19 @@ use crate::gpu::{
 use std::sync::{Arc, Mutex};
 use winit::window::Window;
 
+#[derive(Debug, Default)]
+pub struct Input {
+    pub forward: bool,
+    pub back: bool,
+    pub left: bool,
+    pub right: bool,
+    pub roll_left: bool,
+    pub roll_right: bool,
+}
+
 pub struct Game {
+    pub input: Input,
+    
     gpu_info: Arc<Mutex<GpuInfo>>,
     main_pipeline: MainPipeline,
 
@@ -29,10 +41,11 @@ impl Game {
                     Vertex::new([1.0, 1.0], [1.0, 0.0, 0.0, 1.0]),
                 ],
                 indices: &[0, 1, 2, 2, 1, 3],
-            })
-            .unwrap();
+            });
 
         Self {
+            input: Input::default(),
+            
             gpu_info,
             main_pipeline,
 

@@ -17,7 +17,7 @@ use std::{
 };
 use winit::{
     dpi::PhysicalSize,
-    event::{Event, WindowEvent},
+    event::{ElementState, Event, VirtualKeyCode, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
     window::WindowBuilder,
 };
@@ -43,10 +43,33 @@ async fn main() {
     event_loop.run(move |event, _, control_flow| {
         *control_flow = ControlFlow::Poll;
         match event {
+            // Exit window when close button is pressed
             Event::WindowEvent {
                 event: WindowEvent::CloseRequested,
                 window_id,
             } if window_id == window.id() => *control_flow = ControlFlow::Exit,
+
+            // Pass keyboard input to game
+            Event::WindowEvent {
+                event: WindowEvent::KeyboardInput { input, .. },
+                window_id,
+            } if window_id == window.id() => {
+                let pressed = input.state == ElementState::Pressed;
+
+                if let Some(keycode) = input.virtual_keycode {
+                    use VirtualKeyCode::*;
+                    // TODO: scancode instead of virtual keycode
+                    match keycode {
+                        W => game.input.forward = pressed,
+                        S => game.input.back = pressed,
+                        A => game.input.left = pressed,
+                        D => game.input.right = pressed,
+                        Q => game.input.roll_left = pressed,
+                        E => game.input.roll_right = pressed,
+                        _ => (),
+                    }
+                }
+            }
 
             // If there are no remaining window events to handle, update the game
             Event::MainEventsCleared => {

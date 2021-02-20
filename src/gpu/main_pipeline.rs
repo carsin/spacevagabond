@@ -195,14 +195,12 @@ impl MainPipeline {
     pub fn create_mesh(&mut self, data: &MeshData) -> Mesh {
         let GpuInfo { device, .. } = &*self.gpu_info.lock().unwrap();
 
-        let mesh = Mesh {
+        Mesh {
             index_count: data.indices.len() as u32,
             vertex_buffer: create_vertex_buffer(device, data.vertices),
             index_buffer: create_index_buffer(device, data.indices),
             instance_buffer: create_instance_buffer(device, &[]),
-        };
-
-        Ok(mesh)
+        }
     }
 
     pub fn render(&mut self, target: &wgpu::TextureView, mesh: &mut Mesh, instances: &[Instance]) {
