@@ -14,6 +14,6 @@ layout(set = 0, binding = 0) uniform View {
 layout(location = 0) out vec4 o_Color;
 
 void main() {
-    gl_Position = vec4(i_Transform * u_Camera * vec3(i_Position, 1), 1);
+    gl_Position = vec4(u_Camera * i_Transform * vec3(i_Position, 1), 1);
     o_Color = i_Color;
 }

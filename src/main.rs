@@ -49,7 +49,7 @@ async fn main() {
                 window_id,
             } if window_id == window.id() => *control_flow = ControlFlow::Exit,
 
-            // Pass keyboard input to game
+            // Handle keyboard input
             Event::WindowEvent {
                 event: WindowEvent::KeyboardInput { input, .. },
                 window_id,
@@ -60,12 +60,14 @@ async fn main() {
                     use VirtualKeyCode::*;
                     // TODO: scancode instead of virtual keycode
                     match keycode {
-                        W => game.input.forward = pressed,
-                        S => game.input.back = pressed,
-                        A => game.input.left = pressed,
-                        D => game.input.right = pressed,
-                        Q => game.input.roll_left = pressed,
-                        E => game.input.roll_right = pressed,
+                        // Close game
+                        Escape => *control_flow = ControlFlow::Exit,
+
+                        // Game input
+                        A => game.input.move_l = pressed,
+                        D => game.input.move_r = pressed,
+                        S => game.input.move_b = pressed,
+                        W => game.input.move_f = pressed,
                         _ => (),
                     }
                 }

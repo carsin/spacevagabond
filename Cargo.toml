@@ -10,7 +10,7 @@ edition = "2018"
 winit = "0.24.0"
 wgpu = "0.7"
 raw-window-handle = "0.3"
-bytemuck = { verison = "1.5", features = ["derive"] }
+bytemuck = { version = "1.5", features = ["derive"] }
 nalgebra = { version = "0.24", features = ["mint"] }
 tokio = { version = "1.2", features = ["rt", "macros"] }
 crevice = "0.5"
