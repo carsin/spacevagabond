@@ -286,19 +286,13 @@ impl DefaultPipeline {
         Ok(())
     }
 
-    pub fn render(&mut self) {
+    pub fn render(&mut self, target: &wgpu::TextureView) {
         let GpuInfo {
             device,
             queue,
             swapchain,
             ..
         } = &*self.gpu_info.lock().unwrap();
-
-        // Retrieve swapchain frame
-        let frame = match swapchain.get_current_frame() {
-            Ok(frame) => frame,
-            Err(e) => panic!(format!("Swapchain error: {:?}", e)),
-        };
 
         // Update uniform
         queue.write_buffer(&self.view_buffer, 0, self.view.as_std140().as_bytes());
@@ -310,7 +304,7 @@ impl DefaultPipeline {
             let mut render_pass = cmd.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("Default Render Pass"),
                 color_attachments: &[wgpu::RenderPassColorAttachmentDescriptor {
-                    attachment: &frame.output.view,
+                    attachment: target,
                     ops: wgpu::Operations {
                         load: wgpu::LoadOp::Load,
                         store: true,
