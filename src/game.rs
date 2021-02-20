@@ -7,7 +7,7 @@ use winit::window::Window;
 
 pub struct Game {
     gpu_info: Arc<Mutex<GpuInfo>>,
-    default_pipeline: MainPipeline,
+    main_pipeline: MainPipeline,
 
     // Test things
     test_mesh: Mesh,
@@ -16,11 +16,11 @@ pub struct Game {
 
 impl Game {
     pub async fn new(gpu_info: Arc<Mutex<GpuInfo>>) -> Self {
-        let mut default_pipeline =
+        let mut main_pipeline =
             MainPipeline::new(gpu_info.clone(), View::new(na::Matrix3::identity()));
 
         // Test mesh: square with different colored vertices
-        let test_mesh = default_pipeline
+        let test_mesh = main_pipeline
             .create_mesh(&MeshData {
                 vertices: &[
                     Vertex::new([0.0, 0.0], [1.0, 1.0, 1.0, 1.0]),
@@ -34,7 +34,7 @@ impl Game {
 
         Self {
             gpu_info,
-            default_pipeline,
+            main_pipeline,
 
             test_mesh,
             test: 0.0,
@@ -49,7 +49,7 @@ impl Game {
         // Update camera
         let size = window.inner_size();
         let aspect = size.width as f32 / size.height as f32;
-        self.default_pipeline.view =
+        self.main_pipeline.view =
             View::new(na::Matrix3::new_nonuniform_scaling(&if aspect >= 1.0 {
                 na::Vector2::new(1.0, aspect)
             } else {
@@ -68,7 +68,7 @@ impl Game {
             .view;
 
         // Do rendering
-        self.default_pipeline.render(
+        self.main_pipeline.render(
             target,
             &mut self.test_mesh,
             &[Instance::new(
