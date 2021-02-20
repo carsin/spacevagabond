@@ -1,7 +1,6 @@
-use raw_window_handle::HasRawWindowHandle;
+pub mod main_pipeline;
 
-pub mod pipelines;
-pub mod render_context;
+use raw_window_handle::HasRawWindowHandle;
 
 pub struct GpuInfo {
     pub instance: wgpu::Instance,

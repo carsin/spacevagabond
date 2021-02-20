@@ -1,5 +1,5 @@
-use super::gpu::{
-    pipelines::default::{DefaultPipeline, Instance, Mesh, MeshData, Vertex, View},
+use crate::gpu::{
+    main_pipeline::{MainPipeline, Instance, Mesh, MeshData, Vertex, View},
     GpuInfo,
 };
 use std::sync::{Arc, Mutex};
@@ -7,7 +7,7 @@ use winit::window::Window;
 
 pub struct Game {
     gpu_info: Arc<Mutex<GpuInfo>>,
-    default_pipeline: DefaultPipeline,
+    default_pipeline: MainPipeline,
 
     // Test things
     test_mesh: Mesh,
@@ -17,7 +17,7 @@ pub struct Game {
 impl Game {
     pub async fn new(gpu_info: Arc<Mutex<GpuInfo>>) -> Self {
         let mut default_pipeline =
-            DefaultPipeline::new(gpu_info.clone(), View::new(na::Matrix3::identity()));
+            MainPipeline::new(gpu_info.clone(), View::new(na::Matrix3::identity()));
 
         // Test mesh: square with different colored vertices
         let test_mesh = default_pipeline
@@ -42,7 +42,6 @@ impl Game {
     }
 
     pub fn update(&mut self, delta_time: f32) {
-        println!("test: {}", self.test);
         self.test += delta_time;
     }
 

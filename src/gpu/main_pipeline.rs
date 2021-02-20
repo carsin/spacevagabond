@@ -1,9 +1,8 @@
-use crevice::std140::{self, AsStd140, Std140};
+use crevice::std140::{AsStd140, Std140};
 use std::{
-    collections::{HashMap, HashSet},
     convert::TryInto,
     mem::size_of,
-    sync::{Arc, Mutex, Weak},
+    sync::{Arc, Mutex},
 };
 
 use bytemuck::{Pod, Zeroable};
@@ -12,8 +11,7 @@ use wgpu::util::DeviceExt;
 use crate::gpu::GpuInfo;
 
 #[derive(Debug)]
-pub enum Error {
-}
+pub enum Error {}
 pub type Result<T> = std::result::Result<T, Error>;
 
 // View uniform
@@ -77,18 +75,16 @@ pub struct Mesh {
     instance_buffer: wgpu::Buffer,
 }
 
-pub struct DefaultPipeline {
+pub struct MainPipeline {
     pub view: View,
 
     gpu_info: Arc<Mutex<GpuInfo>>,
-    view_bind_group_layout: wgpu::BindGroupLayout,
-    layout: wgpu::PipelineLayout,
     pipeline: wgpu::RenderPipeline,
     view_buffer: wgpu::Buffer,
     view_bind_group: wgpu::BindGroup,
 }
 
-impl DefaultPipeline {
+impl MainPipeline {
     pub fn new(gpu_info: Arc<Mutex<GpuInfo>>, view: View) -> Self {
         let gpu_info_ = gpu_info.clone();
         let GpuInfo {
@@ -100,7 +96,7 @@ impl DefaultPipeline {
 
         let view_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                label: Some("Default View Bind Group Layout"),
+                label: Some("Main View Bind Group Layout"),
                 entries: &[wgpu::BindGroupLayoutEntry {
                     binding: 0,
                     ty: wgpu::BindingType::Buffer {
@@ -118,18 +114,18 @@ impl DefaultPipeline {
             });
 
         let vert_shader =
-            device.create_shader_module(&wgpu::include_spirv!("shaders/default.vert.spv"));
+            device.create_shader_module(&wgpu::include_spirv!("shaders/main.vert.spv"));
         let frag_shader =
-            device.create_shader_module(&wgpu::include_spirv!("shaders/default.frag.spv"));
+            device.create_shader_module(&wgpu::include_spirv!("shaders/main.frag.spv"));
 
         let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("Default Pipeline Layout"),
+            label: Some("Main Pipeline Layout"),
             bind_group_layouts: &[&view_bind_group_layout],
             push_constant_ranges: &[],
         });
 
         let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("Default Render Pipeline"),
+            label: Some("Main Render Pipeline"),
             layout: Some(&layout),
             vertex: wgpu::VertexState {
                 entry_point: "main",
@@ -178,7 +174,7 @@ impl DefaultPipeline {
         let view_buffer = create_view_buffer(device, &view);
 
         let view_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("Default View Bind Group"),
+            label: Some("Main View Bind Group"),
             layout: &view_bind_group_layout,
             entries: &[wgpu::BindGroupEntry {
                 binding: 0,
@@ -194,8 +190,6 @@ impl DefaultPipeline {
             view,
 
             gpu_info,
-            view_bind_group_layout,
-            layout,
             pipeline,
             view_buffer,
             view_bind_group,
@@ -216,12 +210,7 @@ impl DefaultPipeline {
     }
 
     pub fn render(&mut self, target: &wgpu::TextureView, mesh: &mut Mesh, instances: &[Instance]) {
-        let GpuInfo {
-            device,
-            queue,
-            swapchain,
-            ..
-        } = &*self.gpu_info.lock().unwrap();
+        let GpuInfo { device, queue, .. } = &*self.gpu_info.lock().unwrap();
 
         mesh.instance_buffer = create_instance_buffer(device, instances);
 
@@ -233,7 +222,7 @@ impl DefaultPipeline {
 
         {
             let mut render_pass = cmd.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some("Default Render Pass"),
+                label: Some("Main Render Pass"),
                 color_attachments: &[wgpu::RenderPassColorAttachmentDescriptor {
                     attachment: target,
                     ops: wgpu::Operations {
@@ -257,17 +246,9 @@ impl DefaultPipeline {
     }
 }
 
-fn first_available_id_index(ids: &[usize]) -> usize {
-    ids.iter()
-        .copied()
-        .enumerate()
-        .find_map(|(index, id)| if index != id { Some(index) } else { None })
-        .unwrap_or(ids.len())
-}
-
 fn create_view_buffer(device: &wgpu::Device, view: &View) -> wgpu::Buffer {
     device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-        label: Some("Default View Buffer"),
+        label: Some("Main View Buffer"),
         contents: view.as_std140().as_bytes(),
         usage: wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::COPY_DST,
     })
@@ -275,7 +256,7 @@ fn create_view_buffer(device: &wgpu::Device, view: &View) -> wgpu::Buffer {
 
 fn create_vertex_buffer(device: &wgpu::Device, vertices: &[Vertex]) -> wgpu::Buffer {
     device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-        label: Some("Default Vertex Buffer"),
+        label: Some("Main Vertex Buffer"),
         contents: bytemuck::cast_slice(vertices),
         usage: wgpu::BufferUsage::VERTEX,
     })
@@ -283,7 +264,7 @@ fn create_vertex_buffer(device: &wgpu::Device, vertices: &[Vertex]) -> wgpu::Buf
 
 fn create_index_buffer(device: &wgpu::Device, indices: &[u16]) -> wgpu::Buffer {
     device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-        label: Some("Default Index Buffer"),
+        label: Some("Main Index Buffer"),
         contents: bytemuck::cast_slice(indices),
         usage: wgpu::BufferUsage::INDEX,
     })
@@ -291,7 +272,7 @@ fn create_index_buffer(device: &wgpu::Device, indices: &[u16]) -> wgpu::Buffer {
 
 fn create_instance_buffer(device: &wgpu::Device, instances: &[Instance]) -> wgpu::Buffer {
     device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-        label: Some("Default Instance Buffer"),
+        label: Some("Main Instance Buffer"),
         contents: bytemuck::cast_slice(instances),
         usage: wgpu::BufferUsage::VERTEX,
     })

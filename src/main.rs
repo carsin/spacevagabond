@@ -1,20 +1,19 @@
 extern crate bytemuck;
+extern crate crevice;
+extern crate mint;
 extern crate nalgebra as na;
 extern crate raw_window_handle;
 extern crate wgpu;
 extern crate winit;
-extern crate crevice;
-extern crate mint;
 
 mod game;
 mod gpu;
 
 use game::Game;
 use gpu::GpuInfo;
-use std::future::Future;
 use std::{
     sync::{Arc, Mutex},
-    time::{Duration, Instant},
+    time::Instant,
 };
 use winit::{
     dpi::PhysicalSize,
