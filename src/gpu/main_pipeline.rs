@@ -10,10 +10,6 @@ use wgpu::util::DeviceExt;
 
 use crate::gpu::GpuInfo;
 
-#[derive(Debug)]
-pub enum Error {}
-pub type Result<T> = std::result::Result<T, Error>;
-
 // View uniform
 #[derive(AsStd140, Clone, Copy)]
 pub struct View {
@@ -196,7 +192,7 @@ impl MainPipeline {
         }
     }
 
-    pub fn create_mesh(&mut self, data: &MeshData) -> Result<Mesh> {
+    pub fn create_mesh(&mut self, data: &MeshData) -> Mesh {
         let GpuInfo { device, .. } = &*self.gpu_info.lock().unwrap();
 
         let mesh = Mesh {
