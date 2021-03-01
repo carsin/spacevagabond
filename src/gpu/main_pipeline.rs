@@ -73,7 +73,6 @@ pub struct Mesh {
 
 pub struct MainPipeline {
     pub view: View,
-
     gpu_info: Arc<Mutex<GpuInfo>>,
     pipeline: wgpu::RenderPipeline,
     view_buffer: wgpu::Buffer,

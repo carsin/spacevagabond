@@ -1,13 +1,8 @@
-extern crate bytemuck;
-extern crate crevice;
-extern crate mint;
 extern crate nalgebra as na;
-extern crate raw_window_handle;
-extern crate wgpu;
-extern crate winit;
 
 mod game;
 mod gpu;
+mod player;
 
 use game::Game;
 use gpu::GpuInfo;
@@ -62,7 +57,6 @@ async fn main() {
                     match keycode {
                         // Close game
                         Escape => *control_flow = ControlFlow::Exit,
-
                         // Game input
                         A => game.input.move_l = pressed,
                         D => game.input.move_r = pressed,
