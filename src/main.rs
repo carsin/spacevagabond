@@ -3,6 +3,7 @@ extern crate nalgebra as na;
 mod game;
 mod gpu;
 mod player;
+mod gfx;
 
 use game::Game;
 use gpu::GpuInfo;

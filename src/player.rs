@@ -3,30 +3,31 @@ use crate::gpu::{main_pipeline::{Instance, MainPipeline, Mesh, MeshData, Vertex,
 use super::game;
 
 // #[derive(Default)]
-pub struct Player<'a> {
+pub struct Player{
     input: game::Input,
     pub angle: f32,
     pub position: na::Vector2<f32>,
     pub velocity: na::Vector2<f32>,
-    pub mesh: MeshData<'a>, // lifetime ig?
+    // pub mesh: ,
 }
 
-impl<'a> Player<'a> {
+impl Player{
     pub fn new() -> Self {
         Self {
             input: game::Input::default(),
             angle: 0.0,
             position: na::Vector2::default(),
             velocity: na::Vector2::default(),
-            mesh: &MeshData {
-                // Test mesh: square with different colored vertices
-                vertices: &[
-                    Vertex::new([-0.5, -0.5], [1.0, 1.0, 1.0, 1.0]),
-                    Vertex::new([0.5, -0.5], [1.0, 0.0, 1.0, 1.0]),
-                    Vertex::new([-0.5, 0.5], [1.0, 1.0, 1.0, 1.0]),
-                    Vertex::new([0.5, 0.5], [1.0, 0.0, 0.0, 1.0]),
-                ],
-                indices: &[0, 1, 2, 2, 1, 3],
+            mesh:
+            // &MeshData {
+            //     // Test mesh: square with different colored vertices
+            //     vertices: &[
+            //         Vertex::new([-0.5, -0.5], [1.0, 1.0, 1.0, 1.0]),
+            //         Vertex::new([0.5, -0.5], [1.0, 0.0, 1.0, 1.0]),
+            //         Vertex::new([-0.5, 0.5], [1.0, 1.0, 1.0, 1.0]),
+            //         Vertex::new([0.5, 0.5], [1.0, 0.0, 0.0, 1.0]),
+            //     ],
+            //     indices: &[0, 1, 2, 2, 1, 3],
             }
         }
 

@@ -7,6 +7,7 @@ use std::sync::{Arc, Mutex};
 use winit::window::Window;
 
 use super::player;
+use super::gfx;
 
 #[derive(Default, Debug)]
 pub struct Input {
@@ -16,13 +17,13 @@ pub struct Input {
     pub move_b: bool,
 }
 
-pub struct Game<'a> {
+pub struct Game {
     gpu_info: Arc<Mutex<GpuInfo>>,
     main_pipeline: MainPipeline,
-    player: player::Player<'a>,
+    player: player::Player,
 }
 
-impl Game<'_> {
+impl Game {
     pub async fn new(gpu_info: Arc<Mutex<GpuInfo>>) -> Self {
         let mut main_pipeline = MainPipeline::new(gpu_info.clone(), View::new(na::Matrix3::identity())); // ???
 
