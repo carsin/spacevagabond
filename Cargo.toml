@@ -11,7 +11,9 @@ winit = "0.24.0"
 wgpu = "0.7"
 raw-window-handle = "0.3"
 bytemuck = { version = "1.5", features = ["derive"] }
-nalgebra = { version = "0.24", features = ["mint"] }
+nalgebra = { version = "0.25", features = ["mint"] }
 tokio = { version = "1.2", features = ["rt", "macros"] }
-crevice = "0.5"
+crevice = "0.6"
 mint = "0.5"
+log = "0.4"
+env_logger = "0.8"

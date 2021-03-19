@@ -1,11 +1,12 @@
 extern crate nalgebra as na;
 
 mod game;
+mod gfx;
 mod gpu;
 mod player;
-mod gfx;
 
 use game::Game;
+use gfx::GameRenderer;
 use gpu::GpuInfo;
 use std::{
     sync::{Arc, Mutex},
@@ -20,12 +21,16 @@ use winit::{
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
+    // Initialize logger
+    env_logger::init_from_env(env_logger::Env::new().default_filter_or("INFO"));
+
     let event_loop = EventLoop::new();
     let window = WindowBuilder::new()
         .with_inner_size(PhysicalSize::new(1366, 768))
         .build(&event_loop)
         .unwrap();
 
+    // Retrieve gpu information for rendering
     let gpu_info = Arc::new(Mutex::new(
         GpuInfo::new(
             &window,
@@ -33,7 +38,12 @@ async fn main() {
         )
         .await,
     ));
-    let mut game = Game::new(gpu_info.clone()).await;
+
+    // Game
+    let mut game = Game::new();
+    let mut game_renderer = GameRenderer::new(gpu_info.clone());
+
+    // Timing
     let mut last_tick = Instant::now();
 
     event_loop.run(move |event, _, control_flow| {
@@ -83,7 +93,7 @@ async fn main() {
 
             // Render the game
             Event::RedrawRequested(_) => {
-                game.render(&window);
+                game_renderer.render(&game, &window);
             }
             _ => (),
         }

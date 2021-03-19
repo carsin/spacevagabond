@@ -1,5 +1,6 @@
 pub mod main_pipeline;
 
+use log::info;
 use raw_window_handle::HasRawWindowHandle;
 
 pub struct GpuInfo {
@@ -23,7 +24,7 @@ impl GpuInfo {
             .await
             .expect("Failed to get a suitable render adapter");
 
-        println!("Selected GPU: {}", adapter.get_info().name);
+        info!("Selected GPU: {}", adapter.get_info().name);
 
         let (device, queue) = adapter
             .request_device(
@@ -42,7 +43,7 @@ impl GpuInfo {
                 height: window_size.y,
                 format: adapter.get_swap_chain_preferred_format(&surface),
                 present_mode: wgpu::PresentMode::Fifo,
-                usage: wgpu::TextureUsage::RENDER_ATTACHMENT,
+                usage: wgpu::TextureUsage::RENDER_ATTACHMENT | /* TODO: why? --> */ wgpu::TextureUsage::COPY_SRC,
             },
         );
 

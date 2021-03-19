@@ -1,13 +1,4 @@
-use crate::gpu::{
-    main_pipeline::{Instance, MainPipeline, Mesh, MeshData, Vertex, View},
-    GpuInfo,
-};
-
-use std::sync::{Arc, Mutex};
-use winit::window::Window;
-
-use super::player;
-use super::gfx;
+use crate::player::{Player, PlayerControls};
 
 #[derive(Default, Debug)]
 pub struct Input {
@@ -17,51 +8,41 @@ pub struct Input {
     pub move_b: bool,
 }
 
+impl Input {
+    // Extract the player controls from the current input state
+    // At the moment, there is clear duplication between here and the player mod, but that is not a mistake
+    // It is coincidental that the two structs can be translated directly between each other right now, but that may change in the future
+    // By keeping them as separate structs, we are future proofing in case we want to change one or the other
+    pub fn player_controls(&self) -> PlayerControls {
+        PlayerControls {
+            move_l: self.move_l,
+            move_r: self.move_r,
+            move_f: self.move_f,
+            move_b: self.move_b,
+        }
+    }
+}
+
 pub struct Game {
-    gpu_info: Arc<Mutex<GpuInfo>>,
-    main_pipeline: MainPipeline,
-    player: player::Player,
+    player: Player,
+    pub input: Input, // Any possible player game input, which is translated and relayed to wherever it's needed
 }
 
 impl Game {
-    pub async fn new(gpu_info: Arc<Mutex<GpuInfo>>) -> Self {
-        let mut main_pipeline = MainPipeline::new(gpu_info.clone(), View::new(na::Matrix3::identity())); // ???
-
+    pub fn new() -> Self {
         Self {
-            gpu_info,
-            main_pipeline,
-            player: player::Player::new(),
+            player: Player::new(),
+            input: Input::default(),
         }
     }
 
-    pub fn render(&mut self, window: &Window) {
-        // Update camera
-        let size = window.inner_size();
-        let aspect = size.width as f32 / size.height as f32;
-        self.main_pipeline.view = View::new( // ???
-            na::Matrix3::new_nonuniform_scaling(&if aspect >= 1.0 {
-                na::Vector2::new(1.0, aspect)
-            } else {
-                na::Vector2::new(1.0 / aspect, 1.0)
-            })
-            .append_scaling(0.2),
-        );
+    // The root game update function, everything in the game that requires regular updates is called from here at some level
+    // e.g. player update, entity update, world update, processing interactions between any of those, etc.
+    pub fn update(&mut self, delta: f32) {
+        self.player.update(delta, &self.input.player_controls());
+    }
 
-        let target = &self.gpu_info.lock().unwrap().swapchain.get_current_frame().unwrap().output.view; // Get target frame to render
-
-        // Render player
-        self.main_pipeline.render(
-            target,
-            &mut self.main_pipeline.create_mesh(&self.player.mesh),
-            // ???
-            &[Instance::new(
-                na::Similarity2::new(
-                    self.player.position,
-                    self.player.angle,
-                    1.0 / (1.0 + self.player.velocity.magnitude()),
-                )
-                .to_homogeneous(),
-            )],
-        );
+    pub fn player(&self) -> &Player {
+        &self.player
     }
 }

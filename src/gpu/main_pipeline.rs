@@ -11,6 +11,7 @@ use wgpu::util::DeviceExt;
 use crate::gpu::GpuInfo;
 
 // View uniform
+// The view is basically the algorithm to convert from game coordinates into actual viewport coordinates for rendering
 #[derive(AsStd140, Clone, Copy)]
 pub struct View {
     pub camera: mint::ColumnMatrix3<f32>,
@@ -42,7 +43,7 @@ impl Vertex {
     }
 }
 
-// An instance of a mesh
+// An instance of a mesh to render
 #[derive(Clone, Copy)]
 pub struct Instance {
     pub transform: mint::ColumnMatrix3<f32>,
@@ -57,18 +58,11 @@ impl Instance {
     }
 }
 
-// Vertices and indices of a mesh, unrelated to the gpu
-pub struct MeshData<'a> {
-    pub vertices: &'a [Vertex],
-    pub indices: &'a [u16],
-}
-
 // A full gpu-uploaded mesh with instance information
 pub struct Mesh {
     index_count: u32,
     vertex_buffer: wgpu::Buffer,
     index_buffer: wgpu::Buffer,
-    instance_buffer: wgpu::Buffer,
 }
 
 pub struct MainPipeline {
@@ -191,30 +185,44 @@ impl MainPipeline {
         }
     }
 
-    pub fn create_mesh(&mut self, data: &MeshData) -> Mesh {
+    pub fn create_mesh(&mut self, vertices: &[Vertex], indices: &[u16]) -> Mesh {
         let GpuInfo { device, .. } = &*self.gpu_info.lock().unwrap();
 
         Mesh {
-            index_count: data.indices.len() as u32,
-            vertex_buffer: create_vertex_buffer(device, data.vertices),
-            index_buffer: create_index_buffer(device, data.indices),
-            instance_buffer: create_instance_buffer(device, &[]),
+            index_count: indices.len() as u32,
+            vertex_buffer: create_vertex_buffer(device, vertices),
+            index_buffer: create_index_buffer(device, indices),
         }
     }
 
-    pub fn render(&mut self, target: &wgpu::TextureView, mesh: &mut Mesh, instances: &[Instance]) {
+    // Render a list of instances for desired meshes
+    pub fn render(
+        &mut self,
+        target: &wgpu::TextureView,
+        meshes_with_instances: &[(&Mesh, &[Instance])],
+    ) {
         let GpuInfo { device, queue, .. } = &*self.gpu_info.lock().unwrap();
-
-        mesh.instance_buffer = create_instance_buffer(device, instances);
 
         // Update uniform
         queue.write_buffer(&self.view_buffer, 0, self.view.as_std140().as_bytes());
 
+        // TODO: maybe allocate only one instance buffer and throw all the instances in there
+        let meshes_with_instance_buffers = meshes_with_instances
+            .iter()
+            .copied()
+            .map(|(mesh, instances)| {
+                (
+                    mesh,
+                    instances.len() as u32,
+                    create_instance_buffer(device, instances),
+                )
+            })
+            .collect::<Vec<(&Mesh, u32, wgpu::Buffer)>>();
+
         // Draw all instances of all meshes
         let mut cmd = device.create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
-
         {
-            let mut render_pass = cmd.begin_render_pass(&wgpu::RenderPassDescriptor {
+            let mut rp = cmd.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("Main Render Pass"),
                 color_attachments: &[wgpu::RenderPassColorAttachmentDescriptor {
                     attachment: target,
@@ -226,12 +234,15 @@ impl MainPipeline {
                 }],
                 depth_stencil_attachment: None,
             });
-            render_pass.set_pipeline(&self.pipeline);
-            render_pass.set_bind_group(0, &self.view_bind_group, &[]);
-            render_pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
-            render_pass.set_vertex_buffer(1, mesh.instance_buffer.slice(..));
-            render_pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
-            render_pass.draw_indexed(0..mesh.index_count, 0, 0..instances.len() as u32);
+            rp.set_pipeline(&self.pipeline);
+            rp.set_bind_group(0, &self.view_bind_group, &[]);
+
+            for (mesh, instance_count, instance_buffer) in &meshes_with_instance_buffers {
+                rp.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
+                rp.set_vertex_buffer(1, instance_buffer.slice(..));
+                rp.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
+                rp.draw_indexed(0..mesh.index_count, 0, 0..*instance_count);
+            }
         }
 
         // Submit
