@@ -43,7 +43,7 @@ impl GpuInfo {
                 height: window_size.y,
                 format: adapter.get_swap_chain_preferred_format(&surface),
                 present_mode: wgpu::PresentMode::Fifo,
-                usage: wgpu::TextureUsage::RENDER_ATTACHMENT | /* TODO: why? --> */ wgpu::TextureUsage::COPY_SRC,
+                usage: wgpu::TextureUsage::RENDER_ATTACHMENT
             },
         );
 
